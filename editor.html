@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EdenMed — Dictation Editor</title>
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
+<link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>EdenMed <small>Dictation QA</small></div>
+    <div class="spacer"></div>
+    <div class="mode-toggle" id="modeToggle">
+      <button class="mode-opt active" data-mode="panel">Review panel</button>
+      <button class="mode-opt" data-mode="inline">Inline track-changes</button>
+    </div>
+    <div class="pill clock-pill">T <b id="clock">0s</b></div>
+    <div class="pill pending-pill" id="pending" style="display:none">
+      <span class="spin"></span>Correcting <b id="pendingN">0</b> · <span class="lat">6s latency</span>
+    </div>
+    <div class="pill">Context <b id="ctxLen">0</b></div>
+    <div class="dictation" id="dictation">
+      <div class="mic">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </div>
+      <div class="waveform"><span></span><span></span><span></span><span></span><span></span></div>
+      <div>
+        <div class="dict-label" id="dictLabel">Dictate</div>
+        <div class="dict-sub" id="dictSub">Idle · tap to start dictating</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="editor-wrap">
+      <div class="editor-frame">
+        <div class="doc-head">
+          <h1>RADIOGRAFÍA DE TÓRAX</h1>
+          <p>Live dictation · LLM spell-correction runs on pause or every 30s over full context</p>
+        </div>
+        <textarea id="ed"></textarea>
+      </div>
+    </div>
+
+    <aside class="review">
+      <div class="review-head">
+        <h2>Corrections</h2>
+        <span class="review-count" id="count">0 open</span>
+      </div>
+      <div class="panel-off">Panel disabled — corrections are shown inline as track-changes. Click any change in the report to accept or ignore it.</div>
+      <div class="legend">
+        <span><i class="swatch" style="border-color:var(--typo)"></i>Spelling</span>
+        <span><i class="swatch" style="border-color:var(--grammar)"></i>Grammar</span>
+        <span><i class="swatch" style="border-color:var(--style)"></i>Style</span>
+      </div>
+      <div class="review-list" id="list">
+        <div class="empty" id="empty">No corrections yet.<br>Press the mic. The corrector fires on “punto”, a new line, or a pause — results land ~6 s later.</div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="popover"></div>
+  <div class="toast" id="toast"><span class="tick">✓</span><span id="toastMsg"></span></div>
+
+<script src="src/app.js"></script>
+</body>
+</html>

@@ -50,14 +50,58 @@
       </div>
       <div class="panel-off">Panel disabled — corrections are shown inline as track-changes. Click any change in the report to accept or ignore it.</div>
       <div class="legend">
-        <span><i class="swatch" style="border-color:var(--typo)"></i>Spelling</span>
-        <span><i class="swatch" style="border-color:var(--grammar)"></i>Grammar</span>
-        <span><i class="swatch" style="border-color:var(--style)"></i>Style</span>
+        <span class="lg-warn"><i class="swatch" style="border-color:var(--warn)"></i>Warning</span>
+        <span class="lg-mistake"><i class="swatch swatch-dot" style="border-color:var(--mistake)"></i>Typo</span>
       </div>
       <div class="review-list" id="list">
         <div class="empty" id="empty">No corrections yet.<br>Press the mic. The corrector fires on “punto”, a new line, or a pause — results land ~6 s later.</div>
       </div>
     </aside>
+  </div>
+
+  <!-- floating UI-options control (bottom-left) -->
+  <div class="ui-fab" id="uiFab">
+    <div class="ui-panel" id="uiPanel" role="dialog" aria-label="UI options">
+      <div class="ui-panel-head">
+        <h3>Edit UI</h3>
+        <button class="ui-close" id="uiClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="ui-group">
+        <div class="ui-group-title">Report annotations</div>
+        <label class="ui-row">
+          <span class="ui-row-txt">Timing chips<small>&#8943; 15s &rarr; correction &middot; ends 21s</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="tstamp" />
+        </label>
+      </div>
+      <div class="ui-group">
+        <div class="ui-group-title">Correction mode</div>
+        <label class="ui-row">
+          <span class="ui-row-txt">Auto-apply fixes<small>on: corrected silently &middot; off: wait for approval</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="auto" />
+        </label>
+      </div>
+      <div class="ui-group">
+        <div class="ui-group-title">Underline</div>
+        <label class="ui-row">
+          <span class="ui-row-txt"><i class="swatch" style="border-color:var(--warn)"></i>Show warnings<small>both words exist &mdash; one fits better</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="warn" />
+        </label>
+        <label class="ui-row">
+          <span class="ui-row-txt"><i class="swatch swatch-dot" style="border-color:var(--mistake)"></i>Show typos<small>simply misspelled &mdash; no other reading</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="mistake" />
+        </label>
+      </div>
+      <div class="ui-note">
+        A <b>warning</b> is a word that exists but does not fit the context
+        (<i>derrame plural &rarr; pleural</i>) &mdash; corrected, then flagged in yellow for a human.
+        A <b>typo</b> is simply wrong (<i>espandidos &rarr; expandidos</i>) &mdash; gray, and
+        <b>Auto-apply</b> decides whether it is corrected on its own or waits for approval.
+        Dotted gray = already applied, solid gray = still pending.
+      </div>
+    </div>
+    <button class="ui-fab-btn" id="uiFabBtn" aria-expanded="false" aria-controls="uiPanel" title="Edit UI">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2.2" fill="currentColor" stroke="none"/><circle cx="8" cy="17" r="2.2" fill="currentColor" stroke="none"/></svg>
+    </button>
   </div>
 
   <div id="popover"></div>

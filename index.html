@@ -17,6 +17,8 @@
     --typo:#ff5a52;      /* spelling  */
     --grammar:#4a9eff;   /* grammar   */
     --style:#b07cff;     /* style     */
+    --warn:#e8b84b;      /* both words exist, the other fits the context   */
+    --mistake:#8b95a3;   /* the dictated word is simply misspelled          */
     --accept:#33c481;
     --accent:#e8b84b;    /* dictation / brand pulse */
     --radius:10px;
@@ -145,6 +147,9 @@
   .tag.typo{color:var(--typo);background:rgba(255,90,82,.12);}
   .tag.grammar{color:var(--grammar);background:rgba(74,158,255,.12);}
   .tag.style{color:var(--style);background:rgba(176,124,255,.12);}
+  .tag.k-warn{color:var(--warn);background:rgba(232,184,75,.14);}
+  .tag.k-mistake{color:var(--mistake);background:rgba(139,149,163,.14);}
+  .empty b{color:var(--ink-dim);font-weight:600;}
   .card-time{margin-left:auto;font-size:10px;color:var(--ink-faint);font-variant-numeric:tabular-nums;}
   .change{font-size:13px;line-height:1.5;margin-bottom:9px;}
   .change .old{color:var(--typo);text-decoration:line-through;text-decoration-color:rgba(255,90,82,.6);}
@@ -168,7 +173,8 @@
     animation:pop .12s ease-out;
   }
   @keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-  #popover .pop-top{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+  #popover .pop-top{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:9px;}
+  #popover .pop-top .card-time{flex-basis:100%;margin-left:0;line-height:1.5;}
   #popover .change{font-size:14px;margin-bottom:11px;}
   #popover .card-actions{gap:6px;}
   .pop-secondary{margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
@@ -182,6 +188,68 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   .toast .tick{color:var(--accept);}
+
+  /* ---------- UI options: floating control, bottom-left ---------- */
+  .ui-fab{position:fixed;left:18px;bottom:18px;z-index:10001;}
+  .ui-fab-btn{
+    width:40px;height:40px;border-radius:50%;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink-dim);cursor:pointer;
+    display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.45);transition:.16s;
+  }
+  .ui-fab-btn:hover{color:var(--ink);border-color:#333d4a;transform:translateY(-1px);}
+  .ui-fab-btn svg{width:18px;height:18px;}
+  .ui-fab.open .ui-fab-btn{background:var(--accent);color:#1a1204;border-color:var(--accent);}
+
+  .ui-panel{
+    display:none;position:absolute;left:0;bottom:50px;width:274px;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 16px 40px rgba(0,0,0,.55);overflow:hidden;
+  }
+  .ui-fab.open .ui-panel{display:block;animation:pop .12s ease-out;}
+  .ui-panel-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 13px;border-bottom:1px solid var(--line);
+  }
+  .ui-panel-head h3{margin:0;font-size:12px;font-weight:600;letter-spacing:.02em;}
+  .ui-close{background:transparent;border:0;color:var(--ink-faint);font-size:17px;line-height:1;cursor:pointer;padding:0 2px;}
+  .ui-close:hover{color:var(--ink);}
+  .ui-group{padding:9px 13px 10px;border-bottom:1px solid var(--line);}
+  .ui-group-title{
+    font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--ink-faint);margin-bottom:5px;
+  }
+  .ui-row{display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer;}
+  .ui-row-txt{
+    flex:1;min-width:0;font-size:12px;color:var(--ink);
+    display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+  }
+  .ui-row-txt small{
+    flex-basis:100%;font-size:10px;color:var(--ink-faint);line-height:1.4;
+    font-family:var(--mono);
+  }
+  .ui-sw{
+    appearance:none;-webkit-appearance:none;margin:0;flex-shrink:0;
+    width:34px;height:19px;border-radius:20px;position:relative;cursor:pointer;
+    background:#2a323d;border:1px solid var(--line);transition:.16s;
+  }
+  .ui-sw::after{
+    content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+    background:var(--ink-faint);transition:.16s;
+  }
+  .ui-sw:checked{background:rgba(232,184,75,.22);border-color:var(--accent);}
+  .ui-sw:checked::after{transform:translateX(15px);background:var(--accent);}
+  .ui-note{
+    padding:9px 13px 11px;font-size:10px;line-height:1.7;
+    color:var(--ink-faint);background:rgba(0,0,0,.2);
+  }
+  .ui-note b{color:var(--ink-dim);font-weight:600;}
+
+  /* legend follows the same toggles — category rows only show when enabled */
+  .legend{flex-wrap:wrap;row-gap:6px;}
+  .legend .lg-warn,.legend .lg-mistake{display:none;}
+  .swatch-dot{border-bottom-style:dotted;}
+  body.show-warn    .legend .lg-warn,
+  body.show-mistake .legend .lg-mistake{display:flex;}
 </style>
 </head>
 <body>
@@ -227,14 +295,58 @@
       </div>
       <div class="panel-off">Panel disabled — corrections are shown inline as track-changes. Click any change in the report to accept or ignore it.</div>
       <div class="legend">
-        <span><i class="swatch" style="border-color:var(--typo)"></i>Spelling</span>
-        <span><i class="swatch" style="border-color:var(--grammar)"></i>Grammar</span>
-        <span><i class="swatch" style="border-color:var(--style)"></i>Style</span>
+        <span class="lg-warn"><i class="swatch" style="border-color:var(--warn)"></i>Warning</span>
+        <span class="lg-mistake"><i class="swatch swatch-dot" style="border-color:var(--mistake)"></i>Typo</span>
       </div>
       <div class="review-list" id="list">
         <div class="empty" id="empty">No corrections yet.<br>Press the mic. The corrector fires on “punto”, a new line, or a pause — results land ~6 s later.</div>
       </div>
     </aside>
+  </div>
+
+  <!-- floating UI-options control (bottom-left) -->
+  <div class="ui-fab" id="uiFab">
+    <div class="ui-panel" id="uiPanel" role="dialog" aria-label="UI options">
+      <div class="ui-panel-head">
+        <h3>Edit UI</h3>
+        <button class="ui-close" id="uiClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="ui-group">
+        <div class="ui-group-title">Report annotations</div>
+        <label class="ui-row">
+          <span class="ui-row-txt">Timing chips<small>&#8943; 15s &rarr; correction &middot; ends 21s</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="tstamp" />
+        </label>
+      </div>
+      <div class="ui-group">
+        <div class="ui-group-title">Correction mode</div>
+        <label class="ui-row">
+          <span class="ui-row-txt">Auto-apply fixes<small>on: corrected silently &middot; off: wait for approval</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="auto" />
+        </label>
+      </div>
+      <div class="ui-group">
+        <div class="ui-group-title">Underline</div>
+        <label class="ui-row">
+          <span class="ui-row-txt"><i class="swatch" style="border-color:var(--warn)"></i>Show warnings<small>both words exist &mdash; one fits better</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="warn" />
+        </label>
+        <label class="ui-row">
+          <span class="ui-row-txt"><i class="swatch swatch-dot" style="border-color:var(--mistake)"></i>Show typos<small>simply misspelled &mdash; no other reading</small></span>
+          <input class="ui-sw" type="checkbox" data-opt="mistake" />
+        </label>
+      </div>
+      <div class="ui-note">
+        A <b>warning</b> is a word that exists but does not fit the context
+        (<i>derrame plural &rarr; pleural</i>) &mdash; corrected, then flagged in yellow for a human.
+        A <b>typo</b> is simply wrong (<i>espandidos &rarr; expandidos</i>) &mdash; gray, and
+        <b>Auto-apply</b> decides whether it is corrected on its own or waits for approval.
+        Dotted gray = already applied, solid gray = still pending.
+      </div>
+    </div>
+    <button class="ui-fab-btn" id="uiFabBtn" aria-expanded="false" aria-controls="uiPanel" title="Edit UI">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.2" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="2.2" fill="currentColor" stroke="none"/><circle cx="8" cy="17" r="2.2" fill="currentColor" stroke="none"/></svg>
+    </button>
   </div>
 
   <div id="popover"></div>
@@ -267,49 +379,49 @@ const SEGMENTS = [
     text: "TÉCNICA punto y aparte Proyecciones posteroanterior y lateral de tórax obtenidas con tecnica digital",
     secs: 7, trigger: "punto",
     fixes: [
-      {type:"typo", find:"tecnica digital", old:"tecnica", nw:"técnica", msg:"Missing accent — “técnica”."}
+      {type:"typo", find:"tecnica digital", old:"tecnica", nw:"técnica", kind:"mistake", msg:"Missing accent — “técnica”."}
     ]
   },
   {
     text: " punto y aparte HALLAZGOS Los campos pulmonares se encuentran bien espandidos punto Se identifica una lesion tumoral de 5 × 5 × 5 cm",
     secs: 9, trigger: "punto",
     fixes: [
-      {type:"typo", find:"espandidos", old:"espandidos", nw:"expandidos", msg:"Spelling — “expandidos”."},
-      {type:"typo", find:"lesion tumoral", old:"lesion", nw:"lesión", msg:"Missing accent — “lesión”."}
+      {type:"typo", find:"espandidos", old:"espandidos", nw:"expandidos", kind:"mistake", msg:"Spelling — “expandidos”."},
+      {type:"typo", find:"lesion tumoral", old:"lesion", nw:"lesión", kind:"mistake", msg:"Missing accent — “lesión”."}
     ]
   },
   {
     text: " punto No se observa evidencia de otras consolidaciones, nodulos o masas punto El indice cardiotoracico se encuentra dentro de limites normales",
     secs: 10, trigger: "silence",
     fixes: [
-      {type:"typo", find:"nodulos o masas", old:"nodulos", nw:"nódulos", msg:"Missing accent — “nódulos”."},
-      {type:"style", find:"El indice cardiotoracico", old:"El indice cardiotoracico", nw:"El índice cardiotorácico", msg:"Accents — “índice cardiotorácico”."},
-      {type:"grammar", find:"dentro de limites normales", old:"dentro de limites", nw:"dentro de límites", msg:"Missing accent — “límites”."}
+      {type:"typo", find:"nodulos o masas", old:"nodulos", nw:"nódulos", kind:"mistake", msg:"Missing accent — “nódulos”."},
+      {type:"style", find:"El indice cardiotoracico", old:"El indice cardiotoracico", nw:"El índice cardiotorácico", kind:"mistake", msg:"Accents — “índice cardiotorácico”."},
+      {type:"grammar", find:"dentro de limites normales", old:"dentro de limites", nw:"dentro de límites", kind:"mistake", msg:"Missing accent — “límites”."}
     ]
   },
   {
     text: " punto y aparte Las estructuras oseas visualizadas no muestra alteraciones focales",
     secs: 6, trigger: "newline",
     fixes: [
-      {type:"typo", find:"estructuras oseas", old:"oseas", nw:"óseas", msg:"Missing accent — “óseas”."},
-      {type:"grammar", find:"visualizadas no muestra", old:"no muestra", nw:"no muestran", msg:"Agreement — plural subject needs “muestran”."}
+      {type:"typo", find:"estructuras oseas", old:"oseas", nw:"óseas", kind:"mistake", msg:"Missing accent — “óseas”."},
+      {type:"grammar", find:"visualizadas no muestra", old:"no muestra", nw:"no muestran", kind:"mistake", msg:"Agreement — plural subject needs “muestran”."}
     ]
   },
   {
     text: " punto La trama broncovascular es de aspecto conservado punto No se identifica derrame plural ni neumotorax",
     secs: 8, trigger: "punto",
     fixes: [
-      {type:"typo", find:"derrame plural", old:"plural", nw:"pleural", msg:"Spelling — “derrame pleural”, not “plural”."},
-      {type:"typo", find:"ni neumotorax", old:"neumotorax", nw:"neumotórax", msg:"Missing accent — “neumotórax”."}
+      {type:"typo", find:"derrame plural", old:"plural", nw:"pleural", kind:"warn", msg:"Spelling — “derrame pleural”, not “plural”."},
+      {type:"typo", find:"ni neumotorax", old:"neumotorax", nw:"neumotórax", kind:"mistake", msg:"Missing accent — “neumotórax”."}
     ]
   },
   {
     text: " punto y aparte IMPRESION Lesion tumoral de 5 cm en campo pulmonar derecho, a correlacionar con antecedentes clinicos del paciente",
     secs: 9, trigger: "silence",
     fixes: [
-      {type:"style", find:"IMPRESION", old:"IMPRESION", nw:"IMPRESIÓN", msg:"Missing accent — heading “IMPRESIÓN”."},
-      {type:"typo", find:"Lesion tumoral", old:"Lesion", nw:"Lesión", msg:"Missing accent — “Lesión”."},
-      {type:"style", find:"antecedentes clinicos", old:"clinicos", nw:"clínicos", msg:"Missing accent — “clínicos”."}
+      {type:"style", find:"IMPRESION", old:"IMPRESION", nw:"IMPRESIÓN", kind:"mistake", msg:"Missing accent — heading “IMPRESIÓN”."},
+      {type:"typo", find:"Lesion tumoral", old:"Lesion", nw:"Lesión", kind:"mistake", msg:"Missing accent — “Lesión”."},
+      {type:"style", find:"antecedentes clinicos", old:"clinicos", nw:"clínicos", kind:"mistake", msg:"Missing accent — “clínicos”."}
     ]
   }
 ];
@@ -321,7 +433,11 @@ const TRIGGER_LABEL = {
   silence: "6 s silence detected"
 };
 
-let suggestions = [];  // {id, type, old, nw, msg, marked, ts}
+/* Every correction the corrector produced, undecided ones only:
+   {id, type, kind, old, nw, msg, ts}. Whether a k-similar entry is already applied
+   or still waiting for a decision is decided by the "Auto-apply fixes" switch,
+   so flipping it re-reads this same list — nothing is re-run. */
+let suggestions = [];
 let seq = 0;
 let activeId = null;
 
@@ -340,34 +456,64 @@ tinymce.init({
   content_style:`
     body{background:#151a21;color:#e7ecf2;font-family:-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.9;padding:20px 24px;}
 
-    /* the mark carries BOTH old + new; CSS decides what shows */
-    .sugg{cursor:pointer;border-radius:2px;transition:background .15s;}
-    .sugg:hover{background:rgba(255,255,255,.06);}
-    .sugg .s-old, .sugg .s-new{text-decoration:none;}
+    /* Every mark carries BOTH the dictated word and the correction; CSS decides
+       which one you read and whether it is underlined.
 
-    /* -------- PANEL MODE (default): underline the old text, hide the new -------- */
-    body:not(.inline) .sugg .s-new{display:none;}
-    body:not(.inline) .sugg .s-old{border-bottom:2px solid;padding-bottom:1px;}
-    body:not(.inline) .sugg.typo    .s-old{border-color:#ff5a52;}
-    body:not(.inline) .sugg.grammar .s-old{border-color:#4a9eff;}
-    body:not(.inline) .sugg.style   .s-old{border-color:#b07cff;border-bottom-style:dotted;}
+       k-mistake (gray)   plainly wrong — "espandidos", "tecnica", "no muestra".
+                          "Auto-apply fixes" decides whether it is corrected on
+                          its own or queued for approval.
+       k-warn (yellow)    both words exist, the other fits the context better.
+                          Always corrected, and flagged for a human to confirm. */
+    .sugg{border-radius:2px;transition:background .15s;cursor:default;}
+    .sugg .s-old, .sugg .s-new{text-decoration:none;}
+    .sugg.k-warn{cursor:pointer;}
+    body:not(.auto-apply) .sugg.k-mistake{cursor:pointer;}
+    .sugg.k-warn:hover,
+    body:not(.auto-apply) .sugg.k-mistake:hover{background:rgba(255,255,255,.06);}
+
+    /* -------- PANEL MODE -------- */
+
+    /* WARNING: corrected, and underlined yellow so it never slips through */
+    body:not(.inline) .sugg.k-warn .s-old{display:none;}
+    body:not(.inline) .sugg.k-warn .s-new{display:inline;}
+    body:not(.inline).show-warn .sugg.k-warn .s-new{
+      border-bottom:2px solid #e8b84b;padding-bottom:1px;
+    }
+
+    /* TYPO, auto-apply on: already fixed. A dotted gray line marks what changed. */
+    body:not(.inline).auto-apply .sugg.k-mistake .s-old{display:none;}
+    body:not(.inline).auto-apply .sugg.k-mistake .s-new{display:inline;}
+    body:not(.inline).auto-apply.show-mistake .sugg.k-mistake .s-new{
+      border-bottom:2px dotted #8b95a3;padding-bottom:1px;
+    }
+
+    /* TYPO, auto-apply off: the dictated word stays until it is accepted.
+       A solid gray line marks what is still waiting. */
+    body:not(.inline):not(.auto-apply) .sugg.k-mistake .s-old{display:inline;}
+    body:not(.inline):not(.auto-apply) .sugg.k-mistake .s-new{display:none;}
+    body:not(.inline):not(.auto-apply).show-mistake .sugg.k-mistake .s-old{
+      border-bottom:2px solid #8b95a3;padding-bottom:1px;
+    }
 
     /* -------- INLINE MODE: track-changes, old struck through + new inserted -------- */
     body.inline .sugg{padding:0 2px;}
     body.inline .sugg .s-old{
       text-decoration:line-through;opacity:.6;margin-right:3px;
     }
-    body.inline .sugg.typo    .s-old{text-decoration-color:#ff5a52;color:#ff8a84;}
-    body.inline .sugg.grammar .s-old{text-decoration-color:#4a9eff;color:#8cc0ff;}
-    body.inline .sugg.style   .s-old{text-decoration-color:#b07cff;color:#cbaaff;}
-    body.inline .sugg .s-new{font-weight:600;}
-    body.inline .sugg.typo    .s-new{color:#7fe0ad;}
-    body.inline .sugg.grammar .s-new{color:#7fe0ad;}
-    body.inline .sugg.style   .s-new{color:#7fe0ad;}
+    /* AUTO: nothing to track — the fix reads as ordinary text */
+    body.inline.auto-apply .sugg.k-mistake .s-old{display:none;}
+    body.inline.auto-apply .sugg.k-mistake .s-new{color:inherit;font-weight:400;}
+    /* MANUAL: full track-changes on the pending fix */
+    body.inline:not(.auto-apply) .sugg.k-mistake .s-old{display:inline;text-decoration-color:#8b95a3;color:#aeb7c3;}
+    body.inline:not(.auto-apply) .sugg.k-mistake .s-new{color:#7fe0ad;font-weight:600;}
+    /* a warning always shows both words — that is the whole point of it */
+    body.inline .sugg.k-warn .s-old{text-decoration-color:#e8b84b;color:#e0c281;}
+    body.inline .sugg.k-warn .s-new{color:#7fe0ad;font-weight:600;}
 
     .sugg.flash{background:rgba(232,184,75,.28)!important;}
 
-    /* inline timing annotations (like the screenshot) */
+    /* inline timing annotations — off unless enabled in the UI panel */
+    body:not(.show-tstamp) .tstamp{display:none;}
     .tstamp{
       font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11px;
       padding:1px 7px;border-radius:10px;margin:0 3px;white-space:nowrap;
@@ -383,7 +529,7 @@ tinymce.init({
     .tstamp.done::before{content:"✓ ";}
   `,
   setup(ed){
-    ed.on('init',()=>{ setupIframeEvents(ed); applyDispMode(); });
+    ed.on('init',()=>{ setupIframeEvents(ed); applyDispMode(); applyUiOpts(); });
     ed.on('click',()=>{ /* handled via delegated listener below */ });
   }
 });
@@ -405,6 +551,72 @@ function applyDispMode(){
   document.body.classList.toggle('inline-mode', dispMode==='inline');
   hidePopover();
   renderList();
+}
+
+/* ---- floating UI-options panel (bottom-left) ----
+   Everything here is presentation only: it toggles classes on both the page body
+   and the TinyMCE iframe body, so flipping a switch never re-runs the corrector. */
+const UI_CLASS = {tstamp:'show-tstamp', auto:'auto-apply', warn:'show-warn', mistake:'show-mistake'};
+const UI_STORE = 'edenmed.uiOpts.v3';
+let uiOpts = loadUiOpts();
+
+function loadUiOpts(){
+  /* warnings are underlined out of the box — a word the radiologist may have
+     actually meant must never be corrected behind their back. Plain typos are
+     auto-applied and unmarked; switch on "Show typos" to audit them. */
+  const off = {tstamp:false, auto:true, warn:true, mistake:false};
+  try{
+    const raw = localStorage.getItem(UI_STORE);
+    return raw ? Object.assign(off, JSON.parse(raw)) : off;
+  }catch(e){ return off; }
+}
+function saveUiOpts(){ try{ localStorage.setItem(UI_STORE, JSON.stringify(uiOpts)); }catch(e){} }
+
+function applyUiOpts(){
+  const ed = editor$();
+  const bodies = [document.body];
+  if(ed && ed.getBody()) bodies.push(ed.getBody());
+  Object.keys(UI_CLASS).forEach(k=>{
+    bodies.forEach(b=>b.classList.toggle(UI_CLASS[k], !!uiOpts[k]));
+  });
+  renderList();   // auto vs manual changes what the review panel is responsible for
+}
+
+document.querySelectorAll('.ui-sw').forEach(sw=>{
+  sw.checked = !!uiOpts[sw.dataset.opt];
+  sw.addEventListener('change',()=>{
+    uiOpts[sw.dataset.opt] = sw.checked;
+    saveUiOpts();
+    hidePopover();
+    applyUiOpts();
+  });
+});
+
+const fab = $('uiFab');
+function setFab(open){
+  fab.classList.toggle('open', open);
+  $('uiFabBtn').setAttribute('aria-expanded', String(open));
+}
+$('uiFabBtn').addEventListener('click', e=>{ e.stopPropagation(); setFab(!fab.classList.contains('open')); });
+$('uiClose').addEventListener('click', e=>{ e.stopPropagation(); setFab(false); });
+document.addEventListener('click', e=>{ if(!fab.contains(e.target)) setFab(false); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') setFab(false); });
+applyUiOpts();
+
+/* ---- the two kinds of correction ----------------------------------------
+   mistake (gray)   the dictated word is simply wrong — misspelled, missing an
+                    accent, wrong number. There is no other reading of it.
+   warn (yellow)    both words exist; the other one fits the context better
+                    (“derrame plural” → “derrame pleural”). Needs a human.
+   Each fix in SEGMENTS declares its own `kind`; this is only the fallback. */
+const deaccent = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function changeKind(oldTxt, newTxt){
+  const a = deaccent(oldTxt), b = deaccent(newTxt);
+  if(a === b) return 'mistake';                       // accents / casing only
+  let i = 0; while(i < a.length && i < b.length && a[i] === b[i]) i++;
+  // shared stem with a reshaped ending = inflection, still just wrong;
+  // anything else could be a real word the radiologist meant
+  return (i >= 4 && Math.abs(a.length - b.length) <= 3) ? 'mistake' : 'warn';
 }
 
 dict.addEventListener('click',()=>{
@@ -536,27 +748,35 @@ function applyFixes(seg, tStart, tNow){
   const body = ed.getBody();
   let html = body.innerHTML;
 
-  let added = 0;
+  let mech = 0, ctx = 0;
   seg.fixes.forEach(fx=>{
     const id = 'sg'+(seq++);
+    const kind = fx.kind || changeKind(fx.old, fx.nw);
+    const ts = `${tStart}s→${tNow}s`;
     const safeOld = escapeReg(fx.old);
     // match the old token, but never inside an existing tag or an existing .sugg
     const re = new RegExp('(?![^<]*>)'+safeOld);
-    if(re.test(html)){
-      html = html.replace(re,
-        `<span class="sugg ${fx.type}" data-id="${id}" contenteditable="false">`+
-        `<del class="s-old">${fx.old}</del>`+
-        `<ins class="s-new">${fx.nw}</ins>`+
-        `</span>`);
-      suggestions.push({id, type:fx.type, old:fx.old, nw:fx.nw, msg:fx.msg,
-                        marked:true, ts:`${tStart}s→${tNow}s`, trig:seg.trigger});
-      added++;
-    }
+    if(!re.test(html)) return;
+
+    // The mark always carries both words. Auto vs manual is a rendering decision,
+    // so the same markup serves either mode and the switch works retroactively.
+    html = html.replace(re,
+      `<span class="sugg ${fx.type} k-${kind}" data-id="${id}" title="${fx.old} → ${fx.nw}" contenteditable="false">`+
+      `<del class="s-old">${fx.old}</del>`+
+      `<ins class="s-new">${fx.nw}</ins>`+
+      `</span>`);
+
+    suggestions.push({id, type:fx.type, kind, old:fx.old, nw:fx.nw, msg:fx.msg,
+                      marked:true, ts, trig:seg.trigger});
+    if(kind==='warn') ctx++; else mech++;
   });
   body.innerHTML = html;
   updateCtx();
   renderList();
-  if(added) flash(`${added} correction${added>1?'s':''} landed · ${TRIGGER_LABEL[seg.trigger]}`);
+  const parts = [];
+  if(mech) parts.push(uiOpts.auto ? `${mech} typo${mech>1?'s':''} auto-fixed` : `${mech} typo${mech>1?'s':''} to accept`);
+  if(ctx)  parts.push(`${ctx} warning${ctx>1?'s':''}`);
+  if(parts.length) flash(`${parts.join(' · ')} · ${TRIGGER_LABEL[seg.trigger]}`);
 }
 
 function paintPending(){
@@ -595,6 +815,7 @@ function openPopover(id, el){
   pop.innerHTML = `
     <div class="pop-top">
       <span class="tag ${s.type}">${s.type}</span>
+      <span class="tag k-${s.kind}">${s.kind==='warn'?'warning':'typo'}</span>
       <span class="card-time">${s.msg}</span>
     </div>
     <div class="change"><span class="old">${s.old}</span><span class="arrow">→</span><span class="new">${s.nw}</span></div>
@@ -646,13 +867,22 @@ function remove(id,msg){
 /* ---- review panel ---- */
 function renderList(){
   const list=$('list');
-  const open = suggestions.length;
-  $('count').textContent = open + ' open';
-  if(!open){ list.innerHTML='<div class="empty" id="empty">All clear.<br>Continue dictation to generate the next correction batch.</div>'; return; }
-  list.innerHTML = suggestions.map(s=>`
+  // with auto-apply on, the mechanical fixes are already settled and drop off the panel
+  const settled = uiOpts.auto ? suggestions.filter(s=>s.kind==='mistake').length : 0;
+  const pending = uiOpts.auto ? suggestions.filter(s=>s.kind==='warn') : suggestions;
+
+  $('count').textContent = pending.length + ' open' + (settled ? ` · ${settled} auto` : '');
+  if(!pending.length){
+    list.innerHTML = settled
+      ? `<div class="empty" id="empty">No warnings.<br>${settled} typo${settled>1?'s':''} `+
+        `${settled>1?'were':'was'} corrected automatically. Switch off <b>Auto-apply fixes</b> to approve them by hand.</div>`
+      : '<div class="empty" id="empty">All clear.<br>Continue dictation to generate the next correction batch.</div>';
+    return;
+  }
+  list.innerHTML = pending.map(s=>`
     <div class="card ${s.id===activeId?'active':''}" onclick="focusSugg('${s.id}')">
       <div class="card-top">
-        <span class="tag ${s.type}">${s.type}</span>
+        <span class="tag k-${s.kind}">${s.kind==='warn'?'warning':'typo'}</span>
         <span class="card-time">${s.ts}</span>
       </div>
       <div class="change"><span class="old">${s.old}</span><span class="arrow">→</span><span class="new">${s.nw}</span></div>

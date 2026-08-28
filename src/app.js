@@ -109,12 +109,21 @@ tinymce.init({
                           its own or queued for approval.
        k-warn (yellow)    both words exist, the other fits the context better.
                           Always corrected, and flagged for a human to confirm. */
-    .sugg{border-radius:2px;transition:background .15s;cursor:default;}
+    .sugg{border-radius:2px;transition:background .15s;cursor:default;user-select:none;-webkit-user-select:none;}
     .sugg .s-old, .sugg .s-new{text-decoration:none;}
     .sugg.k-warn{cursor:pointer;}
     body:not(.auto-apply) .sugg.k-mistake{cursor:pointer;}
     .sugg.k-warn:hover,
     body:not(.auto-apply) .sugg.k-mistake:hover{background:rgba(255,255,255,.06);}
+    /* TinyMCE marks a clicked contenteditable=false span data-mce-selected and its
+       oxide skin draws a 3px blue outline on it — kill that, our own highlight below
+       is the only "selected" affordance we want. */
+    .sugg[data-mce-selected]{outline:none!important;}
+    /* clicked open: a highlight in the underline's own color, not the browser's
+       default blue selection box around the (contenteditable=false) span */
+    .sugg.active{background:rgba(255,255,255,.12);}
+    .sugg.k-warn.active{background:rgba(232,184,75,.22);}
+    .sugg.k-mistake.active{background:rgba(139,149,163,.22);}
 
     /* -------- PANEL MODE -------- */
 
@@ -128,7 +137,7 @@ tinymce.init({
     /* TYPO, auto-apply on: already fixed. A dotted gray line marks what changed. */
     body:not(.inline).auto-apply .sugg.k-mistake .s-old{display:none;}
     body:not(.inline).auto-apply .sugg.k-mistake .s-new{display:inline;}
-    body:not(.inline).auto-apply.show-mistake .sugg.k-mistake .s-new{
+    body:not(.inline).auto-apply.show-mistake .sugg.k-mistake:not(.k-silent) .s-new{
       border-bottom:2px dotted #8b95a3;padding-bottom:1px;
     }
 
@@ -136,7 +145,7 @@ tinymce.init({
        A solid gray line marks what is still waiting. */
     body:not(.inline):not(.auto-apply) .sugg.k-mistake .s-old{display:inline;}
     body:not(.inline):not(.auto-apply) .sugg.k-mistake .s-new{display:none;}
-    body:not(.inline):not(.auto-apply).show-mistake .sugg.k-mistake .s-old{
+    body:not(.inline):not(.auto-apply).show-mistake .sugg.k-mistake:not(.k-silent) .s-old{
       border-bottom:2px solid #8b95a3;padding-bottom:1px;
     }
 
@@ -255,6 +264,10 @@ applyUiOpts();
                     (“derrame plural” → “derrame pleural”). Needs a human.
    Each fix in SEGMENTS declares its own `kind`; this is only the fallback. */
 const deaccent = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const stripPunct = s => s.trim().toLowerCase().replace(/[.,;:!\u00a1?\u00bf"'\u00ab\u00bb()\-\u2013\u2014]/g,'').replace(/\s+/g,' ');
+/* accent- or punctuation-only fixes are too trivial to flag: same letters, just
+   the tilde or a stop restored. Real misspellings still get the underline. */
+const isSilent = (oldTxt, newTxt) => deaccent(oldTxt) === deaccent(newTxt) || stripPunct(oldTxt) === stripPunct(newTxt);
 function changeKind(oldTxt, newTxt){
   const a = deaccent(oldTxt), b = deaccent(newTxt);
   if(a === b) return 'mistake';                       // accents / casing only
@@ -405,8 +418,9 @@ function applyFixes(seg, tStart, tNow){
 
     // The mark always carries both words. Auto vs manual is a rendering decision,
     // so the same markup serves either mode and the switch works retroactively.
+    const silentCls = isSilent(fx.old, fx.nw) ? ' k-silent' : '';
     html = html.replace(re,
-      `<span class="sugg ${fx.type} k-${kind}" data-id="${id}" title="${fx.old} → ${fx.nw}" contenteditable="false">`+
+      `<span class="sugg ${fx.type} k-${kind}${silentCls}" data-id="${id}" contenteditable="false">`+
       `<del class="s-old">${fx.old}</del>`+
       `<ins class="s-new">${fx.nw}</ins>`+
       `</span>`);
@@ -438,6 +452,13 @@ function setupIframeEvents(ed){
     if(t){ e.preventDefault(); openPopover(t.dataset.id, t); }
     else hidePopover();
   });
+  // once a popover is open, hovering another underlined word previews it too —
+  // but hover alone never opens the first one, that still takes a click
+  doc.addEventListener('mouseover', e=>{
+    if(activeId === null) return;
+    const t = e.target.closest('.sugg');
+    if(t && t.dataset.id !== activeId) openPopover(t.dataset.id, t);
+  });
   doc.addEventListener('contextmenu', e=>{
     const t = e.target.closest('.sugg');
     if(t){ e.preventDefault(); openPopover(t.dataset.id, t); }
@@ -449,6 +470,12 @@ function openPopover(id, el){
   const s = suggestions.find(x=>x.id===id);
   if(!s) return;
   activeId = id;
+  const doc = el.ownerDocument;
+  doc.querySelectorAll('.sugg.active').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  // clicking a contenteditable=false span drops the browser's own blue
+  // selection box on it; drop the native selection so only our highlight shows
+  doc.defaultView.getSelection().removeAllRanges();
   const pop = $('popover');
   const iframe = document.querySelector('.tox-edit-area__iframe');
   const ir = iframe.getBoundingClientRect();
@@ -457,26 +484,29 @@ function openPopover(id, el){
   let left = ir.left + er.left;
   left = Math.min(left, window.innerWidth - 262);
 
+  // whatever kind of fix this is, the corrected word is already sitting in
+  // the text — there's nothing to "accept". The only useful action from the
+  // underline itself is putting the dictated word back.
   pop.innerHTML = `
     <div class="pop-top">
       <span class="tag ${s.type}">${s.type}</span>
-      <span class="tag k-${s.kind}">${s.kind==='warn'?'warning':'typo'}</span>
-      <span class="card-time">${s.msg}</span>
     </div>
-    <div class="change"><span class="old">${s.old}</span><span class="arrow">→</span><span class="new">${s.nw}</span></div>
+    <div class="change"><span class="old">${s.old}</span></div>
     <div class="card-actions">
-      <button class="btn accept" onclick="accept('${s.id}')">Accept</button>
-      <button class="btn" onclick="ignore('${s.id}')">Ignore</button>
-    </div>
-    <div class="pop-secondary">
-      <button class="btn dict" onclick="addToDict('${s.id}')">＋ Add “${s.old}” to dictionary</button>
+      <button class="btn" onclick="revert('${s.id}')">Revert to “${s.old}”</button>
     </div>`;
   pop.style.display='block';
   pop.style.top = top+'px';
   pop.style.left = left+'px';
   renderList();
 }
-function hidePopover(){ $('popover').style.display='none'; activeId=null; renderList(); }
+function hidePopover(){
+  $('popover').style.display='none';
+  activeId=null;
+  const ed = editor$();
+  if(ed && ed.getDoc()) ed.getDoc().querySelectorAll('.sugg.active').forEach(n=>n.classList.remove('active'));
+  renderList();
+}
 
 /* ---- actions ---- */
 window.accept = function(id){
@@ -490,6 +520,12 @@ window.ignore = function(id){
   const span = ed.getDoc().querySelector(`.sugg[data-id="${id}"]`);
   if(span){ span.replaceWith(ed.getDoc().createTextNode(s.old)); }
   remove(id, `Ignored`);
+};
+window.revert = function(id){
+  const ed=editor$(); const s=suggestions.find(x=>x.id===id); if(!s) return;
+  const span = ed.getDoc().querySelector(`.sugg[data-id="${id}"]`);
+  if(span){ span.replaceWith(ed.getDoc().createTextNode(s.old)); }
+  remove(id, `Reverted → “${s.old}”`);
 };
 window.addToDict = function(id){
   const ed=editor$(); const s=suggestions.find(x=>x.id===id); if(!s) return;

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dictation-demo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/mariacamilabravo/Documents/Claude/Dictado UI/.claude/dev-server.mjs"],
+      "port": 8000
+    }
+  ]
+}
